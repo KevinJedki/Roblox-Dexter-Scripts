@@ -1,29 +1,29 @@
--- Servicios
+-- Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Estado general
+-- General state
 local ESP_ENABLED = true
 local HEAD_EXPAND_ENABLED = true
 local UI_VISIBLE = true
 local SCRIPT_ACTIVE = true
 
--- Tablas para seguimiento
+-- Tables for tracking
 local trackedHeads = {}
 local originalSizes = {}
 
--- Tamaño fijo para cajas visuales (cubo)
+-- Fixed size for visual boxes (cube)
 local VISUAL_BOX_SIZE = Vector3.new(1.4, 1.5, 1.4)
 
--- Detectar tamaños anormales
+-- Detect abnormal sizes
 local function isWeirdSize(size)
 	return size.X > 3 or size.Y > 3 or size.Z > 3
 end
 
--- Crear adornos visuales
+-- Create visual adornments
 local function createAdornments(head)
 	if not SCRIPT_ACTIVE then return end
 	if head:FindFirstChild("ESP_Red") or head:FindFirstChild("ESP_Green") then return end
@@ -53,7 +53,7 @@ local function createAdornments(head)
 	trackedHeads[head] = redBox
 end
 
--- Ajustar tamaño cabeza y HRP
+-- Adjust head and HRP size
 local function updateHeadSize(model)
 	if not SCRIPT_ACTIVE then return end
 
@@ -101,7 +101,7 @@ local function updateHeadSize(model)
 	end
 end
 
--- Procesar modelo llamado "Male"
+-- Process model named "Male"
 local function processModel(model)
 	if not SCRIPT_ACTIVE then return end
 	if model:IsA("Model") and model.Name == "Male" and model:FindFirstChild("Head") then
@@ -122,7 +122,7 @@ frame.Size = UDim2.new(0, 200, 0, 160)
 frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 frame.BorderSizePixel = 0
 
--- Función para botones
+-- Function for buttons
 local function createButton(text, callback)
 	local button = Instance.new("TextButton", frame)
 	button.Size = UDim2.new(1, -20, 0, 30)
@@ -136,7 +136,7 @@ local function createButton(text, callback)
 	return button
 end
 
--- Botón ESP
+-- ESP Button
 local espBtn
 espBtn = createButton("ESP: ON", function()
 	if not SCRIPT_ACTIVE then return end
@@ -155,19 +155,19 @@ espBtn = createButton("ESP: ON", function()
 	end
 end)
 
--- Botón Cabeza Grande
+-- Big Head Button
 local bigHeadBtn
-bigHeadBtn = createButton("Cabeza Grande: ON", function()
+bigHeadBtn = createButton("Big Head: ON", function()
 	if not SCRIPT_ACTIVE then return end
 	HEAD_EXPAND_ENABLED = not HEAD_EXPAND_ENABLED
-	bigHeadBtn.Text = "Cabeza Grande: " .. (HEAD_EXPAND_ENABLED and "ON" or "OFF")
+	bigHeadBtn.Text = "Big Head: " .. (HEAD_EXPAND_ENABLED and "ON" or "OFF")
 	for _, model in pairs(workspace:GetChildren()) do
 		processModel(model)
 	end
 end)
 
--- Cierre completo
-createButton("Cerrar Script", function()
+-- Full shutdown
+createButton("Close Script", function()
 	SCRIPT_ACTIVE = false
 
 	for head, _ in pairs(trackedHeads) do
@@ -196,7 +196,7 @@ createButton("Cerrar Script", function()
 	if script and script.Parent then script:Destroy() end
 end)
 
--- Insert para ocultar GUI
+-- Insert to hide GUI
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not gameProcessed and input.KeyCode == Enum.KeyCode.Insert then
 		if not SCRIPT_ACTIVE then return end
@@ -205,7 +205,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Raycast para visibilidad
+-- Raycast for visibility
 RunService.RenderStepped:Connect(function()
 	if not SCRIPT_ACTIVE then return end
 	for head, redBox in pairs(trackedHeads) do
@@ -226,19 +226,19 @@ RunService.RenderStepped:Connect(function()
 	end
 end)
 
--- Procesar existentes
+-- Process existing
 for _, model in pairs(workspace:GetChildren()) do
 	processModel(model)
 end
 
--- Nuevos NPCs añadidos
+-- New NPCs added
 workspace.ChildAdded:Connect(function(child)
 	if not SCRIPT_ACTIVE then return end
 	task.wait(0.5)
 	processModel(child)
 end)
 
--- Revisión periódica de modelos renombrados a "Male"
+-- Periodic check for models renamed to "Male"
 RunService.Heartbeat:Connect(function()
 	if not SCRIPT_ACTIVE then return end
 	for _, instance in pairs(workspace:GetChildren()) do
