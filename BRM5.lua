@@ -1,27 +1,48 @@
--- Creates a red transparent box around a character's head for ESP visualization
-local function createAdornment(head)
-	-- If the adornment already exists, do nothing
-	if head:FindFirstChild("ESP_Adornment") then return end
+-- Required services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
-	-- Create a new box adornment
-	local box = Instance.new("BoxHandleAdornment")
-	box.Name = "ESP_Adornment"
-	box.Size = head.Size -- Match the size of the head
-	box.Adornee = head -- Attach the box to the head
-	box.AlwaysOnTop = true -- Make sure it's always visible on top of other objects
-	box.ZIndex = 5 -- Render priority (higher = drawn later)
-	box.Color3 = Color3.fromRGB(255, 0, 0) -- Red color
-	box.Transparency = 0.3 -- Slightly see-through
-	box.Parent = head -- Parent it to the head so it moves with it
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- Tables to store adornments
+local trackedHeads = {}
+
+-- Creates both adornments on the head
+local function createAdornments(head)
+	-- Don't create adornments if they already exist
+	if head:FindFirstChild("ESP_Red") or head:FindFirstChild("ESP_Green") then return end
+
+	-- Red box (only visible if behind a wall)
+	local redBox = Instance.new("BoxHandleAdornment")
+	redBox.Name = "ESP_Red"
+	redBox.Size = head.Size
+	redBox.Adornee = head
+	redBox.AlwaysOnTop = true
+	redBox.ZIndex = 5
+	redBox.Color3 = Color3.fromRGB(255, 0, 0)
+	redBox.Transparency = 0.3
+	redBox.Parent = head
+
+	-- Green box (always visible, but respects walls)
+	local greenBox = Instance.new("BoxHandleAdornment")
+	greenBox.Name = "ESP_Green"
+	greenBox.Size = head.Size
+	greenBox.Adornee = head
+	greenBox.AlwaysOnTop = false
+	greenBox.ZIndex = 4
+	greenBox.Color3 = Color3.fromRGB(0, 255, 0)
+	greenBox.Transparency = 0.3
+	greenBox.Parent = head
+
+	-- Save references
+	trackedHeads[head] = redBox
 end
 
--- Checks if a model should have an adornment and applies it
+-- Processes "Male" models with children named "AI_"
 local function processModel(model)
-	-- Check if the instance is a Model and is named "Male"
 	if model:IsA("Model") and model.Name == "Male" then
 		local hasAIChild = false
-
-		-- Loop through the model's children to find any with a name starting with "AI_"
 		for _, child in pairs(model:GetChildren()) do
 			if string.sub(child.Name, 1, 3) == "AI_" then
 				hasAIChild = true
@@ -29,21 +50,40 @@ local function processModel(model)
 			end
 		end
 
-		-- If it has an AI_ child and a Head part, add the ESP box
 		if hasAIChild and model:FindFirstChild("Head") then
-			createAdornment(model.Head)
+			createAdornments(model.Head)
 		end
 	end
 end
 
--- Process all current models in the workspace when the script runs
+-- Checks if the head is visible and adjusts the red adornment
+RunService.RenderStepped:Connect(function()
+	for head, redBox in pairs(trackedHeads) do
+		if head and head:IsDescendantOf(workspace) and redBox then
+			local origin = camera.CFrame.Position
+			local direction = (head.Position - origin)
+			local rayParams = RaycastParams.new()
+			rayParams.FilterDescendantsInstances = {localPlayer.Character}
+			rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+
+			local result = workspace:Raycast(origin, direction, rayParams)
+
+			if result and result.Instance ~= head then
+				redBox.Transparency = 0.3 -- Show if it's behind something
+			else
+				redBox.Transparency = 1 -- Hide if it's in sight
+			end
+		end
+	end
+end)
+
+-- Process models already in the workspace
 for _, model in pairs(workspace:GetChildren()) do
 	processModel(model)
 end
 
--- Listen for new models being added to the workspace
+-- Process newly added models
 workspace.ChildAdded:Connect(function(child)
-	-- Wait a moment to ensure all children of the new model are loaded
 	task.wait(0.1)
 	processModel(child)
 end)
