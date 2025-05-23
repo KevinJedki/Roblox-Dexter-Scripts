@@ -256,7 +256,7 @@ local renderConn = RunService.RenderStepped:Connect(function()
                 if not originalSizes[model] then
                     originalSizes[model] = root.Size
                 end
-                root.Size = Vector3.new(10, 10, 10)
+                root.Size = Vector3.new(15, 15, 15)
                 root.Transparency = showHitbox and 0.85 or 1
             end
         end
