@@ -1,121 +1,116 @@
+-- BRM5 v4 OPTIMIZED by dexter (with local file saving)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 
 local localPlayer = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- Variables
-local trackedParts = {}
-local wallEnabled = false
-local wallConnections = {}
+-- Local configuration (executor filesystem)
+local configFile = "Dexter_Config.txt"
+
+local function saveConfig(config)
+    if writefile then
+        writefile(configFile, HttpService:JSONEncode(config))
+    end
+end
+
+local function loadConfig()
+    if isfile and isfile(configFile) and readfile then
+        local success, data = pcall(function()
+            return HttpService:JSONDecode(readfile(configFile))
+        end)
+        if success then
+            return data
+        end
+    end
+    return {wall = false, silent = false, hitbox = false}
+end
+
+local config = loadConfig()
+local wallEnabled = config.wall
+local silentEnabled = config.silent
+local showHitbox = config.hitbox
 local guiVisible = true
 local isUnloaded = false
+local trackedParts = {}
+local wallConnections = {}
+local originalSizes = {}
 
--- Color per body part
-local colorMap = {
-    Head = Color3.fromRGB(245, 27, 74),
-    UpperTorso = Color3.fromRGB(128, 0, 128),
-    RightUpperArm = Color3.fromRGB(255, 255, 0),
-    LeftUpperArm = Color3.fromRGB(255, 255, 0),
-    RightUpperLeg = Color3.fromRGB(255, 140, 0),
-    LeftUpperLeg = Color3.fromRGB(255, 140, 0)
-}
-
--- Remove all ESP boxes
 local function destroyAllBoxes()
     for part, _ in pairs(trackedParts) do
         if part and part.Parent then
-            if part:FindFirstChild("Wall_Red") then part.Wall_Red:Destroy() end
-            if part:FindFirstChild("Wall_Green") then part.Wall_Green:Destroy() end
+            if part:FindFirstChild("Wall_Box") then part.Wall_Box:Destroy() end
         end
     end
     trackedParts = {}
 end
 
--- Create box for a specific body part
+local function resetRootSizes()
+    for model, originalSize in pairs(originalSizes) do
+        if model and model:FindFirstChild("Root") then
+            model.Root.Size = originalSize
+            model.Root.Transparency = 1
+        end
+    end
+    originalSizes = {}
+end
+
 local function createBoxForPart(part)
     if isUnloaded or not part or part.Parent == nil then return end
-    if part:FindFirstChild("Wall_Red") then return end
+    if part:FindFirstChild("Wall_Box") then return end
+
+    task.wait(0.5)
+
+    if not part or not part.Parent or part:FindFirstChild("Wall_Box") then return end
 
     local boxSize = part.Size + Vector3.new(0.1, 0.1, 0.1)
 
-    local redBox = Instance.new("BoxHandleAdornment")
-    redBox.Name = "Wall_Red"
-    redBox.Size = boxSize
-    redBox.Adornee = part
-    redBox.AlwaysOnTop = true
-    redBox.ZIndex = 5
-    redBox.Color3 = Color3.fromRGB(255, 0, 0)
-    redBox.Transparency = 1
-    redBox.Parent = part
-
-    local greenBox = Instance.new("BoxHandleAdornment")
-    greenBox.Name = "Wall_Green"
-    greenBox.Size = boxSize
-    greenBox.Adornee = part
-    greenBox.AlwaysOnTop = false
-    greenBox.ZIndex = 4
-    greenBox.Color3 = colorMap[part.Name] or Color3.fromRGB(0, 255, 0)
-    greenBox.Transparency = 0.3
-    greenBox.Parent = part
+    local box = Instance.new("BoxHandleAdornment")
+    box.Name = "Wall_Box"
+    box.Size = boxSize
+    box.Adornee = part
+    box.AlwaysOnTop = true
+    box.ZIndex = 5
+    box.Color3 = Color3.fromRGB(255, 0, 0)
+    box.Transparency = 0.3
+    box.Parent = part
 
     trackedParts[part] = true
 end
 
--- Create boxes for all NPCs named "Male"
 local function createBoxesForAllNPCs()
     for _, npc in ipairs(workspace:GetDescendants()) do
         if npc:IsA("Model") and npc.Name == "Male" then
-            local parts = {
-                npc:FindFirstChild("Head"),
-                npc:FindFirstChild("UpperTorso"),
-                npc:FindFirstChild("RightUpperArm"),
-                npc:FindFirstChild("LeftUpperArm"),
-                npc:FindFirstChild("RightUpperLeg"),
-                npc:FindFirstChild("LeftUpperLeg")
-            }
-            for _, part in ipairs(parts) do
-                if part then createBoxForPart(part) end
-            end
+            local head = npc:FindFirstChild("Head")
+            if head then createBoxForPart(head) end
         end
     end
 end
 
--- Register existing NPCs named "Male"
 local function registerExistingNPCs()
     for _, npc in ipairs(workspace:GetDescendants()) do
         if npc:IsA("Model") and npc.Name == "Male" then
-            local parts = {
-                npc:FindFirstChild("Head"),
-                npc:FindFirstChild("UpperTorso"),
-                npc:FindFirstChild("RightUpperArm"),
-                npc:FindFirstChild("LeftUpperArm"),
-                npc:FindFirstChild("RightUpperLeg"),
-                npc:FindFirstChild("LeftUpperLeg")
-            }
-            for _, part in ipairs(parts) do
-                if part then trackedParts[part] = true end
-            end
+            local head = npc:FindFirstChild("Head")
+            if head then trackedParts[head] = true end
         end
     end
 end
 
--- GUI
+-- GUI setup
 local screenGui = Instance.new("ScreenGui", localPlayer:WaitForChild("PlayerGui"))
 screenGui.Name = "Wall_GUI"
 screenGui.ResetOnSpawn = false
 
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Position = UDim2.new(0, 10, 0, 10)
-mainFrame.Size = UDim2.new(0, 200, 0, 130)
+mainFrame.Size = UDim2.new(0, 200, 0, 210)
 mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = guiVisible
 mainFrame.AnchorPoint = Vector2.new(0, 0)
-
-local uiCorner = Instance.new("UICorner", mainFrame)
-uiCorner.CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 8)
 
 local title = Instance.new("TextLabel", mainFrame)
 title.Text = "BRM5 v4 by dexter"
@@ -139,17 +134,23 @@ uiList.FillDirection = Enum.FillDirection.Vertical
 uiList.HorizontalAlignment = Enum.HorizontalAlignment.Center
 uiList.VerticalAlignment = Enum.VerticalAlignment.Top
 
-local toggleBtn = Instance.new("TextButton", buttonContainer)
-toggleBtn.Size = UDim2.new(1, -20, 0, 30)
-toggleBtn.Text = "Wall OFF"
-toggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-toggleBtn.TextColor3 = Color3.new(1, 1, 1)
-toggleBtn.Font = Enum.Font.Gotham
-toggleBtn.TextScaled = true
-Instance.new("UICorner", toggleBtn)
+local function createButton(text, color, parent)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = UDim2.new(1, -20, 0, 30)
+    btn.Text = text
+    btn.BackgroundColor3 = color
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.Gotham
+    btn.TextScaled = true
+    Instance.new("UICorner", btn)
+    return btn
+end
 
+local toggleBtn = createButton(wallEnabled and "Wall ON" or "Wall OFF", Color3.fromRGB(40, 40, 40), buttonContainer)
 toggleBtn.MouseButton1Click:Connect(function()
     wallEnabled = not wallEnabled
+    config.wall = wallEnabled
+    saveConfig(config)
     toggleBtn.Text = wallEnabled and "Wall ON" or "Wall OFF"
     if wallEnabled then
         createBoxesForAllNPCs()
@@ -158,91 +159,111 @@ toggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-local unloadBtn = Instance.new("TextButton", buttonContainer)
-unloadBtn.Size = UDim2.new(1, -20, 0, 30)
-unloadBtn.Text = "Unload"
-unloadBtn.BackgroundColor3 = Color3.fromRGB(80, 20, 20)
-unloadBtn.TextColor3 = Color3.new(1, 1, 1)
-unloadBtn.Font = Enum.Font.GothamBold
-unloadBtn.TextScaled = true
-Instance.new("UICorner", unloadBtn)
+local silentBtn = createButton(silentEnabled and "Silent ON (RISKY)" or "Silent OFF (RISKY)", Color3.fromRGB(80, 20, 20), buttonContainer)
+silentBtn.Font = Enum.Font.GothamBold
+silentBtn.MouseButton1Click:Connect(function()
+    silentEnabled = not silentEnabled
+    config.silent = silentEnabled
+    saveConfig(config)
+    silentBtn.Text = silentEnabled and "Silent ON (RISKY)" or "Silent OFF (RISKY)"
+    if not silentEnabled then resetRootSizes() end
+end)
 
+local hitboxBtn = createButton(showHitbox and "Show Hitbox ON" or "Show Hitbox OFF", Color3.fromRGB(40, 80, 40), buttonContainer)
+hitboxBtn.MouseButton1Click:Connect(function()
+    showHitbox = not showHitbox
+    config.hitbox = showHitbox
+    saveConfig(config)
+    hitboxBtn.Text = showHitbox and "Show Hitbox ON" or "Show Hitbox OFF"
+    for model, _ in pairs(originalSizes) do
+        if model and model:FindFirstChild("Root") then
+            model.Root.Transparency = showHitbox and 0.85 or 1
+        end
+    end
+end)
+
+local unloadBtn = createButton("Unload", Color3.fromRGB(100, 0, 0), buttonContainer)
+unloadBtn.Font = Enum.Font.GothamBold
 unloadBtn.MouseButton1Click:Connect(function()
     isUnloaded = true
     destroyAllBoxes()
+    resetRootSizes()
     screenGui:Destroy()
     for _, conn in ipairs(wallConnections) do
         pcall(function() conn:Disconnect() end)
     end
 end)
 
-buttonContainer.Parent = mainFrame
-
--- Initialize tracking for existing models
 registerExistingNPCs()
 
--- Detect new NPCs named "Male"
-local childConn = workspace.DescendantAdded:Connect(function(descendant)
-    if descendant:IsA("Model") and descendant.Name == "Male" then
-        task.wait(0.5)
-        local parts = {
-            descendant:FindFirstChild("Head"),
-            descendant:FindFirstChild("UpperTorso"),
-            descendant:FindFirstChild("RightUpperArm"),
-            descendant:FindFirstChild("LeftUpperArm"),
-            descendant:FindFirstChild("RightUpperLeg"),
-            descendant:FindFirstChild("LeftUpperLeg")
-        }
-        for _, part in ipairs(parts) do
-            if part then 
-                trackedParts[part] = true
-                if wallEnabled then
-                    createBoxForPart(part)
-                end
+-- Run functions based on loaded configurations
+if wallEnabled then
+    createBoxesForAllNPCs()
+end
+
+if silentEnabled then
+    for _, model in ipairs(workspace:GetDescendants()) do
+        if model:IsA("Model") and model.Name == "Male" and model:FindFirstChild("Root") then
+            local root = model.Root
+            if not originalSizes[model] then
+                originalSizes[model] = root.Size
             end
+            root.Size = Vector3.new(10, 10, 10)
+            root.Transparency = showHitbox and 0.85 or 1
+        end
+    end
+end
+
+local childConn = workspace.ChildAdded:Connect(function(child)
+    if child:IsA("Model") and child.Name == "Male" then
+        task.wait(0.5)
+        local head = child:FindFirstChild("Head")
+        if head then
+            trackedParts[head] = true
+            if wallEnabled then
+                createBoxForPart(head)
+            end
+        end
+        local root = child:FindFirstChild("Root")
+        if root and not silentEnabled then
+            root.Size = Vector3.new(1, 1, 1)
         end
     end
 end)
 table.insert(wallConnections, childConn)
 
--- Visibility check on each frame
 local renderConn = RunService.RenderStepped:Connect(function()
-    if not wallEnabled or isUnloaded then return end
+    if isUnloaded then return end
 
-    for part, _ in pairs(trackedParts) do
-        if part and part.Parent and part:FindFirstChild("Wall_Red") and part:FindFirstChild("Wall_Green") then
-            local origin = camera.CFrame.Position
-            local direction = (part.Position - origin).Unit * 1000
-
-            local rayParams = RaycastParams.new()
-            rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-
-            local ignoreList = {localPlayer.Character}
-            for trackedPart, _ in pairs(trackedParts) do
-                if trackedPart and trackedPart.Parent then
-                    local name = trackedPart.Name
-                    if name == "LeftUpperLeg" or name == "RightUpperLeg"
-                    or name == "LeftUpperArm" or name == "RightUpperArm"
-                    or name == "UpperTorso" or name == "Head" then
-                        table.insert(ignoreList, trackedPart)
-                    end
-                end
+    if wallEnabled then
+        for part, _ in pairs(trackedParts) do
+            if part and part.Parent and part:FindFirstChild("Wall_Box") then
+                local origin = camera.CFrame.Position
+                local rayParams = RaycastParams.new()
+                rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+                rayParams.FilterDescendantsInstances = {localPlayer.Character, part}
+                local result = workspace:Raycast(origin, part.Position - origin, rayParams)
+                local isVisible = not result or result.Instance:IsDescendantOf(part.Parent)
+                part.Wall_Box.Color3 = isVisible and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
             end
+        end
+    end
 
-            rayParams.FilterDescendantsInstances = ignoreList
-
-            local result = workspace:Raycast(origin, part.Position - origin, rayParams)
-
-            local isVisible = not result or result.Instance:IsDescendantOf(part.Parent)
-
-            part.Wall_Green.Transparency = isVisible and 0.3 or 1
-            part.Wall_Red.Transparency = isVisible and 1 or 0.3
+    if silentEnabled then
+        for _, model in ipairs(workspace:GetDescendants()) do
+            if model:IsA("Model") and model.Name == "Male" and model:FindFirstChild("Root") then
+                local root = model.Root
+                if not originalSizes[model] then
+                    originalSizes[model] = root.Size
+                end
+                root.Size = Vector3.new(10, 10, 10)
+                root.Transparency = showHitbox and 0.85 or 1
+            end
         end
     end
 end)
 table.insert(wallConnections, renderConn)
 
--- Insert key toggles GUI
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed or isUnloaded then return end
     if input.KeyCode == Enum.KeyCode.Insert then
