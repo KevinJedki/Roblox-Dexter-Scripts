@@ -29,7 +29,7 @@ end
 -- Reset the size of all Roots
 local function resetRootSizes()
     for model, originalSize in pairs(originalSizes) do
-        if model and model:FindFirstChild("Root") then
+        if model and model:FindFirstChild("UpperTorso") then
             model.Root.Size = originalSize
             model.Root.Transparency = 1
         end
@@ -163,7 +163,7 @@ hitboxBtn.MouseButton1Click:Connect(function()
     showHitbox = not showHitbox
     hitboxBtn.Text = showHitbox and "Show Hitbox ON" or "Show Hitbox OFF"
     for model, _ in pairs(originalSizes) do
-        if model and model:FindFirstChild("Root") then
+        if model and model:FindFirstChild("UpperTorso") then
             model.Root.Transparency = showHitbox and 0.85 or 1
         end
     end
@@ -195,7 +195,7 @@ local childConn = workspace.ChildAdded:Connect(function(child)
                         createBoxForPart(head)
                     end
                 end
-                local root = child:FindFirstChild("Root")
+                local root = child:FindFirstChild("UpperTorso")
                 if root and not silentEnabled then
                     root.Size = Vector3.new(1, 1, 1)
                 end
@@ -225,7 +225,7 @@ local renderConn = RunService.RenderStepped:Connect(function()
 
     if silentEnabled then
         for _, model in ipairs(workspace:GetDescendants()) do
-            if model:IsA("Model") and model.Name == "Male" and model:FindFirstChild("Root") then
+            if model:IsA("Model") and model.Name == "Male" and model:FindFirstChild("UpperTorso") then
                 local hasAIChild = false
                 for _, child in ipairs(model:GetChildren()) do
                     if child.Name:sub(1, 3) == "AI_" then
