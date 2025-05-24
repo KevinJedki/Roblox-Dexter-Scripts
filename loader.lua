@@ -1,65 +1,63 @@
 -- Variables
 local player = game.Players.LocalPlayer
 local screenGui = Instance.new("ScreenGui")
-local frame = Instance.new("Frame")
-local pvpButton = Instance.new("TextButton")
-local pveButton = Instance.new("TextButton")
-
--- Create the GUI
-screenGui.Parent = player:WaitForChild("PlayerGui")
 screenGui.Name = "ModeSelectionGUI"
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.DisplayOrder = 999
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
 
+-- Main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 320, 0, 200)
+frame.Position = UDim2.new(0.5, -160, 0.5, -100)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
 frame.Parent = screenGui
-frame.Size = UDim2.new(0, 300, 0, 200)
-frame.Position = UDim2.new(0, 10, 0, 10)  -- Top-left corner
-frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-frame.BorderSizePixel = 2
-frame.BorderColor3 = Color3.fromRGB(50, 50, 50)
-
--- Shadow for a more professional look
-local shadow = Instance.new("Frame")
-shadow.Parent = frame
-shadow.Size = UDim2.new(1, 10, 1, 10)
-shadow.Position = UDim2.new(0, 5, 0, 5)
-shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-shadow.BackgroundTransparency = 0.5
-shadow.ZIndex = frame.ZIndex - 1
 
 -- Rounded corners
-local uiCorner = Instance.new("UICorner")
-uiCorner.CornerRadius = UDim.new(0, 15)
-uiCorner.Parent = frame
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 12)
+frameCorner.Parent = frame
 
--- PVP Button
-pvpButton.Parent = frame
-pvpButton.Size = UDim2.new(0, 250, 0, 50)
-pvpButton.Position = UDim2.new(0.5, -125, 0.3, -25)
-pvpButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-pvpButton.Text = "PVP"
-pvpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-pvpButton.Font = Enum.Font.GothamBold
-pvpButton.TextSize = 20
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundTransparency = 1
+title.Text = "Select a Mode"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 22
+title.Parent = frame
 
-local pvpCorner = Instance.new("UICorner")
-pvpCorner.CornerRadius = UDim.new(0, 12)
-pvpCorner.Parent = pvpButton
+-- Button creation function
+local function createButton(name, text, color, posY)
+    local button = Instance.new("TextButton")
+    button.Name = name
+    button.Size = UDim2.new(0.8, 0, 0, 45)
+    button.Position = UDim2.new(0.1, 0, 0, posY)
+    button.BackgroundColor3 = color
+    button.Text = text
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 20
+    button.AutoButtonColor = true
 
--- PVE Button
-pveButton.Parent = frame
-pveButton.Size = UDim2.new(0, 250, 0, 50)
-pveButton.Position = UDim2.new(0.5, -125, 0.7, -25)
-pveButton.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
-pveButton.Text = "PVE"
-pveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-pveButton.Font = Enum.Font.GothamBold
-pveButton.TextSize = 20
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = button
 
-local pveCorner = Instance.new("UICorner")
-pveCorner.CornerRadius = UDim.new(0, 12)
-pveCorner.Parent = pveButton
+    button.Parent = frame
+    return button
+end
 
--- Ensure the character is ready
+-- Create buttons
+local pvpButton = createButton("PVPButton", "PVP", Color3.fromRGB(200, 60, 60), 60)
+local pveButton = createButton("PVEButton", "PVE", Color3.fromRGB(60, 200, 60), 115)
+
+-- Ensure character is loaded
 local function getSafeCharacter()
     local character = player.Character
     if not character or not character.Parent then
@@ -68,32 +66,17 @@ local function getSafeCharacter()
     return character
 end
 
--- Function to load the script from GitHub
-local function loadScript(url)
-    local success, response = pcall(function()
-        return game:GetService("HttpService"):GetAsync(url)
-    end)
-
-    if success then
-        local scriptInstance = Instance.new("LocalScript") -- Important: LocalScript
-        scriptInstance.Source = response
-        scriptInstance.Parent = getSafeCharacter() or player:WaitForChild("PlayerScripts")
-    else
-        warn("Failed to load the script.")
-    end
-end
-
--- Function to handle mode selection
+-- Mode selection functions
 local function onPvpSelected()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/HiIxX0Dexter0XxIiH/Roblox-Dexter-Scripts/refs/heads/main/BRM5-PVP.lua"))() -- Change the URL if necessary
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/HiIxX0Dexter0XxIiH/Roblox-Dexter-Scripts/refs/heads/main/BRM5-PVP.lua"))()
     screenGui:Destroy()
 end
 
 local function onPveSelected()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/HiIxX0Dexter0XxIiH/Roblox-Dexter-Scripts/refs/heads/main/BRM5-PVE.lua"))() -- Change the URL if necessary
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/HiIxX0Dexter0XxIiH/Roblox-Dexter-Scripts/refs/heads/main/BRM5-PVE.lua"))()
     screenGui:Destroy()
 end
 
--- Connect buttons to functions
+-- Connect buttons
 pvpButton.MouseButton1Click:Connect(onPvpSelected)
 pveButton.MouseButton1Click:Connect(onPveSelected)
