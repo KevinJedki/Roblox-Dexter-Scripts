@@ -1,4 +1,4 @@
--- BRM5 v4 OPTIMIZED by dexter (with local file saving)
+-- BRM5 v4 OPTIMIZED by dexter (MOD by tu bro)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -7,7 +7,6 @@ local HttpService = game:GetService("HttpService")
 local localPlayer = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- Local configuration (executor filesystem)
 local configFile = "Dexter_Config.txt"
 
 local function saveConfig(config)
@@ -25,18 +24,25 @@ local function loadConfig()
             return data
         end
     end
-    return {wall = false, silent = false, hitbox = false}
+    return {wall = false}
 end
 
 local config = loadConfig()
 local wallEnabled = config.wall
-local silentEnabled = config.silent
-local showHitbox = config.hitbox
 local guiVisible = true
 local isUnloaded = false
 local trackedParts = {}
 local wallConnections = {}
-local originalSizes = {}
+
+local function hasBallSocketConstraint(model)
+    if not model or not model:IsA("Model") then return false end
+    for _, desc in ipairs(model:GetDescendants()) do
+        if desc:IsA("BallSocketConstraint") then
+            return true
+        end
+    end
+    return false
+end
 
 local function destroyAllBoxes()
     for part, _ in pairs(trackedParts) do
@@ -45,16 +51,6 @@ local function destroyAllBoxes()
         end
     end
     trackedParts = {}
-end
-
-local function resetRootSizes()
-    for model, originalSize in pairs(originalSizes) do
-        if model and model:FindFirstChild("Root") then
-            model.Root.Size = originalSize
-            model.Root.Transparency = 1
-        end
-    end
-    originalSizes = {}
 end
 
 local function createBoxForPart(part)
@@ -82,7 +78,7 @@ end
 
 local function createBoxesForAllNPCs()
     for _, npc in ipairs(workspace:GetDescendants()) do
-        if npc:IsA("Model") and npc.Name == "Male" then
+        if npc:IsA("Model") and npc.Name == "Male" and not hasBallSocketConstraint(npc) then
             local head = npc:FindFirstChild("Head")
             if head then createBoxForPart(head) end
         end
@@ -91,7 +87,7 @@ end
 
 local function registerExistingNPCs()
     for _, npc in ipairs(workspace:GetDescendants()) do
-        if npc:IsA("Model") and npc.Name == "Male" then
+        if npc:IsA("Model") and npc.Name == "Male" and not hasBallSocketConstraint(npc) then
             local head = npc:FindFirstChild("Head")
             if head then trackedParts[head] = true end
         end
@@ -105,7 +101,7 @@ screenGui.ResetOnSpawn = false
 
 local mainFrame = Instance.new("Frame", screenGui)
 mainFrame.Position = UDim2.new(0, 10, 0, 10)
-mainFrame.Size = UDim2.new(0, 200, 0, 210)
+mainFrame.Size = UDim2.new(0, 200, 0, 120)
 mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = guiVisible
@@ -159,35 +155,11 @@ toggleBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-local silentBtn = createButton(silentEnabled and "Silent ON (RISKY)" or "Silent OFF (RISKY)", Color3.fromRGB(80, 20, 20), buttonContainer)
-silentBtn.Font = Enum.Font.GothamBold
-silentBtn.MouseButton1Click:Connect(function()
-    silentEnabled = not silentEnabled
-    config.silent = silentEnabled
-    saveConfig(config)
-    silentBtn.Text = silentEnabled and "Silent ON (RISKY)" or "Silent OFF (RISKY)"
-    if not silentEnabled then resetRootSizes() end
-end)
-
-local hitboxBtn = createButton(showHitbox and "Show Hitbox ON" or "Show Hitbox OFF", Color3.fromRGB(40, 80, 40), buttonContainer)
-hitboxBtn.MouseButton1Click:Connect(function()
-    showHitbox = not showHitbox
-    config.hitbox = showHitbox
-    saveConfig(config)
-    hitboxBtn.Text = showHitbox and "Show Hitbox ON" or "Show Hitbox OFF"
-    for model, _ in pairs(originalSizes) do
-        if model and model:FindFirstChild("Root") then
-            model.Root.Transparency = showHitbox and 0.85 or 1
-        end
-    end
-end)
-
 local unloadBtn = createButton("Unload", Color3.fromRGB(100, 0, 0), buttonContainer)
 unloadBtn.Font = Enum.Font.GothamBold
 unloadBtn.MouseButton1Click:Connect(function()
     isUnloaded = true
     destroyAllBoxes()
-    resetRootSizes()
     screenGui:Destroy()
     for _, conn in ipairs(wallConnections) do
         pcall(function() conn:Disconnect() end)
@@ -195,38 +167,19 @@ unloadBtn.MouseButton1Click:Connect(function()
 end)
 
 registerExistingNPCs()
-
--- Run functions based on loaded configurations
-if wallEnabled then
-    createBoxesForAllNPCs()
-end
-
-if silentEnabled then
-    for _, model in ipairs(workspace:GetDescendants()) do
-        if model:IsA("Model") and model.Name == "Male" and model:FindFirstChild("Root") then
-            local root = model.Root
-            if not originalSizes[model] then
-                originalSizes[model] = root.Size
-            end
-            root.Size = Vector3.new(10, 10, 10)
-            root.Transparency = showHitbox and 0.85 or 1
-        end
-    end
-end
+if wallEnabled then createBoxesForAllNPCs() end
 
 local childConn = workspace.ChildAdded:Connect(function(child)
     if child:IsA("Model") and child.Name == "Male" then
         task.wait(0.5)
+        if hasBallSocketConstraint(child) then return end
+
         local head = child:FindFirstChild("Head")
         if head then
             trackedParts[head] = true
             if wallEnabled then
                 createBoxForPart(head)
             end
-        end
-        local root = child:FindFirstChild("Root")
-        if root and not silentEnabled then
-            root.Size = Vector3.new(1, 1, 1)
         end
     end
 end)
@@ -238,26 +191,19 @@ local renderConn = RunService.RenderStepped:Connect(function()
     if wallEnabled then
         for part, _ in pairs(trackedParts) do
             if part and part.Parent and part:FindFirstChild("Wall_Box") then
-                local origin = camera.CFrame.Position
-                local rayParams = RaycastParams.new()
-                rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-                rayParams.FilterDescendantsInstances = {localPlayer.Character, part}
-                local result = workspace:Raycast(origin, part.Position - origin, rayParams)
-                local isVisible = not result or result.Instance:IsDescendantOf(part.Parent)
-                part.Wall_Box.Color3 = isVisible and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-            end
-        end
-    end
-
-    if silentEnabled then
-        for _, model in ipairs(workspace:GetDescendants()) do
-            if model:IsA("Model") and model.Name == "Male" and model:FindFirstChild("Root") then
-                local root = model.Root
-                if not originalSizes[model] then
-                    originalSizes[model] = root.Size
+                local model = part:FindFirstAncestorOfClass("Model")
+                if model and not hasBallSocketConstraint(model) then
+                    local origin = camera.CFrame.Position
+                    local rayParams = RaycastParams.new()
+                    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+                    rayParams.FilterDescendantsInstances = {localPlayer.Character, part}
+                    local result = workspace:Raycast(origin, part.Position - origin, rayParams)
+                    local isVisible = not result or result.Instance:IsDescendantOf(part.Parent)
+                    part.Wall_Box.Visible = true
+                    part.Wall_Box.Color3 = isVisible and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+                else
+                    part.Wall_Box.Visible = false
                 end
-                root.Size = Vector3.new(15, 15, 15)
-                root.Transparency = showHitbox and 0.85 or 1
             end
         end
     end
