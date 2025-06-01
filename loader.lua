@@ -68,12 +68,12 @@ end
 
 -- Mode selection functions
 local function onPvpSelected()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/HiIxX0Dexter0XxIiH/Roblox-Dexter-Scripts/refs/heads/main/BRM5-PVP.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/KevinJedki/Roblox-Dexter-Scripts/refs/heads/main/BRM5-PVP.lua"))()
     screenGui:Destroy()
 end
 
 local function onPveSelected()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/HiIxX0Dexter0XxIiH/Roblox-Dexter-Scripts/refs/heads/main/BRM5-PVE.lua"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/KevinJedki/Roblox-Dexter-Scripts/refs/heads/main/BRM5-PVE.lua"))()
     screenGui:Destroy()
 end
 
