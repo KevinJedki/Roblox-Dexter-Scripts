@@ -46,7 +46,7 @@ local function createBoxForPart(part)
 
     if not part or not part.Parent or part:FindFirstChild("Wall_Box") then return end
 
-    local boxSize = part.Size - part.Size*Vector3.new(0.2, 0.2, 0.2)
+    local boxSize = part.Size - part.Size*Vector3.new(0.25, 0.25, 0.25)
 
     local box = Instance.new("BoxHandleAdornment")
     box.Name = "Wall_Box"
@@ -55,7 +55,7 @@ local function createBoxForPart(part)
     box.AlwaysOnTop = true
     box.ZIndex = 5
     box.Color3 = Color3.fromRGB(255, 0, 0)
-    box.Transparency = 0.75
+    box.Transparency = 0.69
     box.Parent = part
 
     trackedParts[part] = true
