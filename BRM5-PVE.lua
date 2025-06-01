@@ -46,7 +46,7 @@ local function createBoxForPart(part)
 
     if not part or not part.Parent or part:FindFirstChild("Wall_Box") then return end
 
-    local boxSize = part.Size + Vector3.new(0.1, 0.1, 0.1)
+    local boxSize = part.Size - Vector3.new(0.1, 0.1, 0.1)
 
     local box = Instance.new("BoxHandleAdornment")
     box.Name = "Wall_Box"
